@@ -37,8 +37,8 @@ def metadata_extractor(meta: dict, soup: BeautifulSoup) -> dict:
 
 def load_langchain_docs():
     return SitemapLoader(
-        "https://python.langchain.com/sitemap.xml",
-        filter_urls=["https://python.langchain.com/"],
+        "https://www.napavalley.com/sitemap.xml",
+        filter_urls=["https://www.napavalley.com/"],
         parsing_function=langchain_docs_extractor,
         default_parser="lxml",
         bs_kwargs={
@@ -79,12 +79,12 @@ def load_api_docs():
 def ingest_docs():
     docs_from_documentation = load_langchain_docs()
     logger.info(f"Loaded {len(docs_from_documentation)} docs from documentation")
-    docs_from_api = load_api_docs()
-    logger.info(f"Loaded {len(docs_from_api)} docs from API")
+    #docs_from_api = load_api_docs()
+    #logger.info(f"Loaded {len(docs_from_api)} docs from API")
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
     docs_transformed = text_splitter.split_documents(
-        docs_from_documentation + docs_from_api
+        docs_from_documentation #+ docs_from_api
     )
 
     # We try to return 'source' and 'title' metadata when querying vector store and

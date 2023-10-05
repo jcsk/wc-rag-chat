@@ -61,7 +61,7 @@ EXAMPLES:
     Chat History:
 
     Follow Up Input: Hi LangChain!
-    Search Queries: 
+    Search Queries:
 
     Chat History:
     What are vector stores?
@@ -116,11 +116,11 @@ def create_chain(
     model = _PROVIDER_MAP[model_provider](model=model_name, temperature=temperature)
 
     _template = """
-    You are an expert programmer and problem-solver, tasked to answer any question about Langchain. Using the provided context, answer the user's question to the best of your ability using the resources provided.
+    You are an expert in Napa Valley and all things related to wine country, tasked to answer any question about Napa Valley. Using the provided context, answer the user's question to the best of your ability using the resources provided.
     If you really don't know the answer, just say "Hmm, I'm not sure." Don't try to make up an answer.
-    Anything between the following markdown blocks is retrieved from a knowledge bank, not part of the conversation with the user. 
+    Anything between the following markdown blocks is retrieved from a knowledge bank, not part of the conversation with the user.
     <context>
-        {context} 
+        {context}
     <context/>"""
 
     _context = {

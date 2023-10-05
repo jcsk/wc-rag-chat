@@ -184,7 +184,7 @@ export function ChatWindow(props: {
             {titleText}
           </Heading>
           <Heading fontSize="md" fontWeight={"normal"} mb={1} color={"white"}>
-            We appreciate feedback!
+            Chat away!
           </Heading>
         </Flex>
       )}
@@ -215,7 +215,7 @@ export function ChatWindow(props: {
           height={"55px"}
           rounded={"full"}
           type={"text"}
-          placeholder="What is LangChain Expression Language?"
+          placeholder="What is Pinot Noir?"
           textColor={"white"}
           borderColor={"rgb(58, 58, 61)"}
           onSubmit={(e) => {
