@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for chat-langchain on 2023-08-10T11:47:36-07:00
+# fly.toml app configuration file generated for wc-chat-back on 2023-10-04T22:13:22-07:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = "chat-langchain"
+app = "wc-chat-back"
 primary_region = "lax"
 
 [build]
