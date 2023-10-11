@@ -72,7 +72,7 @@ def get_tools():
     langchain_tool = Tool(
         name="Documentation",
         func=search,
-        description="useful for when you need to refer to LangChain's documentation, for both API reference and codebase",
+        description="useful for when you need to ask questions about Wine Country, Napa Valley and Sonoma and the information that is stored",
     )
     ALL_TOOLS = [langchain_tool]
 
@@ -94,7 +94,6 @@ def get_agent(llm, *, chat_history: Optional[list] = None):
             "1. Query your search tool for information on businesses, events, wineries, hiking, restaurants in Napa Valley.\n"
             "2. Then, query your search tool for information on 'things to do' to get as much context as you can about it.\n"
             "3. Answer the question with the context you have gathered.\n"
-            "4. Come up with a good question as a reponse to the original question and context gathered."
             "For another example, given the following input question:\n"
             "-----START OF EXAMPLE INPUT QUESTION-----\n"
             "What are the best wineries? \n"
@@ -102,7 +101,6 @@ def get_agent(llm, *, chat_history: Optional[list] = None):
             "Your research flow should be:\n"
             "1. Query your search tool for information on 'best wineries' in Napa Valley to get as much context as you can about it. \n"
             "2. Answer the question as you now have enough context.\n\n"
-            "3. At the end of the reponse, come up with a question that is a reasonable followup question to the user's question and context gathered."
             "Include friendly commentary. If you can't find the answer, DO NOT make up an answer. Just say you don't know. "
             "Answer the following question as best you can:"
         )

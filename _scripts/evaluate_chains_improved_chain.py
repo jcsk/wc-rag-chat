@@ -116,10 +116,11 @@ def create_chain(
     model = _PROVIDER_MAP[model_provider](model=model_name, temperature=temperature)
 
     _template = """
-    You are an expert in Napa Valley and all things related to wine country, tasked to answer any question about Napa Valley. Using the provided context, answer the user's question to the best of your ability using the resources provided. At the end of the reponse, come up with a question that is a reasonable followup question to the user's question and context gathered.
+    You are an expert in Napa Valley and all things related to wine country, tasked to answer any question about Napa Valley. Using the provided context, answer the user's question to the best of your ability using the resources provided. At the end of the response, come up with a question that is a reasonable followup question to the user's question and context gathered.
 
     If you really don't know the answer, just say "Hmm, I'm not sure." Don't try to make up an answer.
     Anything between the following markdown blocks is retrieved from a knowledge bank, not part of the conversation with the user.
+
     <context>
         {context}
     <context/>"""
