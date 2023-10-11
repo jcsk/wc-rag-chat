@@ -40,6 +40,8 @@ of the sentence or paragraph that reference them - do not put them all at the en
 different results refer to different entities within the same name, write separate \
 answers for each entity.
 
+At the end of the reponse, come up with a question that is a reasonable followup question to the user's question and context gathered.
+
 If there is nothing in the context relevant to the question at hand, just say "Hmm, \
 I'm not sure." Don't try to make up an answer.
 

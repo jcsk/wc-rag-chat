@@ -432,3 +432,98 @@ indexing_stats = index(
    cleanup=None,
    source_id_key="source",
 )
+
+###
+### business details loop from napawineproject.com
+###
+
+"""Load html from files, clean up, split, ingest into Weaviate."""
+import logging
+import os
+import re
+from parser import langchain_docs_extractor
+
+import weaviate
+from bs4 import BeautifulSoup, SoupStrainer
+from langchain.document_loaders import RecursiveUrlLoader, SitemapLoader
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.indexes import SQLRecordManager, index
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.utils.html import PREFIXES_TO_IGNORE_REGEX, SUFFIXES_TO_IGNORE_REGEX
+from langchain.vectorstores import Weaviate
+
+from constants import WEAVIATE_DOCS_INDEX_NAME
+
+logger = logging.getLogger(__name__)
+
+WEAVIATE_URL = os.environ["WEAVIATE_URL"]
+WEAVIATE_API_KEY = os.environ["WEAVIATE_API_KEY"]
+RECORD_MANAGER_DB_URL = os.environ["RECORD_MANAGER_DB_URL"]
+
+class CustomDoc:
+   def __init__(self, source, text, title):
+       self.source = source
+       self.page_content = text
+       self.title = title
+       self.metadata = {
+           "source": source,
+           "title": title,
+           # Add other metadata fields if needed
+       }
+
+
+
+import json
+# (other imports you've mentioned...)
+
+# Load the JSON file
+with open("/Users/jeffreykrause/Downloads/business_details4.json", "r") as file:
+   business_data = json.load(file)
+
+# Transform the data
+transformed_data = [
+   {
+       "source": entry["source"],
+       "text": entry["page_content"],
+       "title": entry["title"],
+   }
+   for entry in business_data
+]
+
+custom_data_objects = [CustomDoc(**data) for data in transformed_data]
+
+# Process the Transformed Data
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
+docs_transformed = text_splitter.split_documents(custom_data_objects)
+
+client = weaviate.Client(
+   url=WEAVIATE_URL,
+   auth_client_secret=weaviate.AuthApiKey(api_key=WEAVIATE_API_KEY),
+)
+
+embedding = OpenAIEmbeddings(chunk_size=200)  # rate limit
+vectorstore = Weaviate(
+   client=client,
+   index_name="LangChain_agent_docs",
+   text_key="text",
+   embedding=embedding,
+   by_text=False,
+   attributes=["source", "title"],
+)
+
+#from langchain.indexes import SQLRecordManager
+
+record_manager = SQLRecordManager(
+   f"weaviate/{WEAVIATE_DOCS_INDEX_NAME}", db_url=RECORD_MANAGER_DB_URL
+)
+record_manager.create_schema()
+
+#from langchain.indexes import index
+
+indexing_stats = index(
+   docs_transformed,
+   record_manager,
+   vectorstore,
+   cleanup=None,
+   source_id_key="source",
+)
