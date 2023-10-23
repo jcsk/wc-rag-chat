@@ -4,27 +4,29 @@ import React, { useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { EmptyState } from "../components/EmptyState";
 import { ChatMessageBubble, Message } from "../components/ChatMessageBubble";
+import { AutoResizeTextarea } from "./AutoResizeTextarea";
 import { marked } from "marked";
 import { Renderer } from "marked";
 import hljs from "highlight.js";
 import "highlight.js/styles/gradient-dark.css";
 
-import { toast } from "react-toastify";
+import { fetchEventSource } from "@microsoft/fetch-event-source";
+import { applyPatch } from "fast-json-patch";
+
 import "react-toastify/dist/ReactToastify.css";
 import {
   Heading,
   Flex,
   IconButton,
-  Input,
   InputGroup,
   InputRightElement,
   Spinner,
 } from "@chakra-ui/react";
-import { ArrowUpIcon, SpinnerIcon } from "@chakra-ui/icons";
+import { ArrowUpIcon } from "@chakra-ui/icons";
 import { Source } from "./SourceBubble";
+import { apiBaseUrl } from "../utils/constants";
 
 export function ChatWindow(props: {
-  apiBaseUrl: string;
   placeholder?: string;
   titleText?: string;
 }) {
@@ -38,7 +40,7 @@ export function ChatWindow(props: {
     { human: string; ai: string }[]
   >([]);
 
-  const { apiBaseUrl, placeholder, titleText = "An LLM" } = props;
+  const { placeholder, titleText = "An LLM" } = props;
 
   const sendMessage = async (message?: string) => {
     if (messageContainerRef.current) {
@@ -55,30 +57,6 @@ export function ChatWindow(props: {
       { id: Math.random().toString(), content: messageValue, role: "user" },
     ]);
     setIsLoading(true);
-    let response;
-    try {
-      response = await fetch(apiBaseUrl + "/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: messageValue,
-          history: chatHistory,
-          conversation_id: conversationId,
-        }),
-      });
-    } catch (e) {
-      setMessages((prevMessages) => prevMessages.slice(0, -1));
-      setIsLoading(false);
-      setInput(messageValue);
-      throw e;
-    }
-    if (!response.body) {
-      throw new Error("Response body is null");
-    }
-    const reader = response.body.getReader();
-    let decoder = new TextDecoder();
 
     let accumulatedMessage = "";
     let runId: string | undefined = undefined;
@@ -101,75 +79,101 @@ export function ChatWindow(props: {
         : "plaintext";
       const highlightedCode = hljs.highlight(
         validLanguage || "plaintext",
-        code
+        code,
       ).value;
       return `<pre class="highlight bg-gray-700" style="padding: 5px; border-radius: 5px; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; max-width: 100%; display: block; line-height: 1.2"><code class="${language}" style="color: #d6e2ef; font-size: 12px; ">${highlightedCode}</code></pre>`;
     };
     marked.setOptions({ renderer });
-
-    reader
-      .read()
-      .then(function processText(
-        res: ReadableStreamReadResult<Uint8Array>
-      ): Promise<void> {
-        const { done, value } = res;
-        if (done) {
-          setChatHistory((prevChatHistory) => [
-            ...prevChatHistory,
-            { human: messageValue, ai: accumulatedMessage },
-          ]);
-          return Promise.resolve();
-        }
-
-        decoder
-          .decode(value)
-          .trim()
-          .split("\n")
-          .map((s) => {
-            let parsed = JSON.parse(s);
-            if ("tok" in parsed) {
-              accumulatedMessage += parsed.tok;
-            } else if ("run_id" in parsed) {
-              runId = parsed.run_id;
-            } else if ("sources" in parsed) {
-              sources = parsed.sources as Source[];
-            }
-          });
-
-        let parsedResult = marked.parse(accumulatedMessage);
-
-        setMessages((prevMessages) => {
-          let newMessages = [...prevMessages];
-          if (messageIndex === null) {
-            messageIndex = newMessages.length;
-            newMessages.push({
-              id: Math.random().toString(),
-              content: parsedResult.trim(),
-              runId: runId,
-              sources: sources,
-              role: "assistant",
-            });
-          } else {
-            newMessages[messageIndex].content = parsedResult.trim();
-            newMessages[messageIndex].runId = runId;
-            newMessages[messageIndex].sources = sources;
+    try {
+      const sourceStepName = "FindDocs";
+      let streamedResponse: Record<string, any> = {};
+      await fetchEventSource(apiBaseUrl + "/chat/stream_log", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({
+          input: {
+            question: messageValue,
+            chat_history: chatHistory,
+          },
+          config: {
+            metadata: {
+              conversation_id: conversationId,
+            },
+          },
+          include_names: [sourceStepName],
+        }),
+        openWhenHidden: true,
+        onerror(err) {
+          throw err;
+        },
+        onmessage(msg) {
+          if (msg.event === "end") {
+            setChatHistory((prevChatHistory) => [
+              ...prevChatHistory,
+              { human: messageValue, ai: accumulatedMessage },
+            ]);
+            setIsLoading(false);
+            return;
           }
-          return newMessages;
-        });
-        setIsLoading(false);
-        return reader.read().then(processText);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  };
+          if (msg.event === "data" && msg.data) {
+            const chunk = JSON.parse(msg.data);
+            streamedResponse = applyPatch(
+              streamedResponse,
+              chunk.ops,
+            ).newDocument;
+            if (
+              Array.isArray(
+                streamedResponse?.logs?.[sourceStepName]?.final_output?.output,
+              )
+            ) {
+              sources = streamedResponse.logs[
+                sourceStepName
+              ].final_output.output.map((doc: Record<string, any>) => ({
+                url: doc.metadata.source,
+                title: doc.metadata.title,
+              }));
+            }
+            if (streamedResponse.id !== undefined) {
+              runId = streamedResponse.id;
+            }
+            if (Array.isArray(streamedResponse?.streamed_output)) {
+              accumulatedMessage = streamedResponse.streamed_output.join("");
+            }
+            const parsedResult = marked.parse(accumulatedMessage);
 
-  const animateButton = (buttonId: string) => {
-    const button = document.getElementById(buttonId);
-    button!.classList.add("animate-ping");
-    setTimeout(() => {
-      button!.classList.remove("animate-ping");
-    }, 500);
+            setMessages((prevMessages) => {
+              let newMessages = [...prevMessages];
+              if (
+                messageIndex === null ||
+                newMessages[messageIndex] === undefined
+              ) {
+                messageIndex = newMessages.length;
+                newMessages.push({
+                  id: Math.random().toString(),
+                  content: parsedResult.trim(),
+                  runId: runId,
+                  sources: sources,
+                  role: "assistant",
+                });
+              } else if (newMessages[messageIndex] !== undefined) {
+                newMessages[messageIndex].content = parsedResult.trim();
+                newMessages[messageIndex].runId = runId;
+                newMessages[messageIndex].sources = sources;
+              }
+              return newMessages;
+            });
+          }
+        },
+      });
+    } catch (e) {
+      setMessages((prevMessages) => prevMessages.slice(0, -1));
+      setIsLoading(false);
+      setInput(messageValue);
+      throw e;
+    }
   };
 
   const sendInitialQuestion = async (question: string) => {
@@ -200,7 +204,6 @@ export function ChatWindow(props: {
                 key={m.id}
                 message={{ ...m }}
                 aiEmoji="🦜"
-                apiBaseUrl={apiBaseUrl}
                 isMostRecent={index === 0}
                 messageCompleted={!isLoading}
               ></ChatMessageBubble>
@@ -210,27 +213,25 @@ export function ChatWindow(props: {
         )}
       </div>
       <InputGroup size="md" alignItems={"center"}>
-        <Input
+        <AutoResizeTextarea
           value={input}
-          height={"55px"}
-          rounded={"full"}
-          type={"text"}
+          maxRows={5}
+          marginRight={"56px"}
           placeholder="What is Pinot Noir?"
           textColor={"white"}
           borderColor={"rgb(58, 58, 61)"}
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendMessage();
-          }}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               sendMessage();
+            } else if (e.key === "Enter" && e.shiftKey) {
+              e.preventDefault();
+              setInput(input + "\n");
             }
           }}
         />
-        <InputRightElement h="full" paddingRight={"15px"}>
+        <InputRightElement h="full">
           <IconButton
             colorScheme="blue"
             rounded={"full"}
@@ -244,6 +245,21 @@ export function ChatWindow(props: {
           />
         </InputRightElement>
       </InputGroup>
+
+      {messages.length === 0 ? (
+        <footer className="flex justify-center absolute bottom-8">
+          <a
+            href="https://github.com/langchain-ai/chat-langchain"
+            target="_blank"
+            className="text-white flex items-center"
+          >
+            <img src="/images/github-mark.svg" className="h-4 mr-1" />
+            <span>View Source</span>
+          </a>
+        </footer>
+      ) : (
+        ""
+      )}
     </div>
   );
 }
