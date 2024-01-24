@@ -1,3 +1,4 @@
+#don't run this
 """Load html from files, clean up, split, ingest into Weaviate."""
 import logging
 import os

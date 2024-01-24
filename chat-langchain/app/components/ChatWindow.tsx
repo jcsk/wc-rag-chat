@@ -217,7 +217,7 @@ export function ChatWindow(props: {
           value={input}
           maxRows={5}
           marginRight={"56px"}
-          placeholder="What is Pinot Noir?"
+          placeholder="Can you help me plan a trip to Napa Valley?"
           textColor={"white"}
           borderColor={"rgb(58, 58, 61)"}
           onChange={(e) => setInput(e.target.value)}

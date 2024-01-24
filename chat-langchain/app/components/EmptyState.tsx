@@ -68,7 +68,7 @@ export function EmptyState(props: { onChoice: (question: string) => any }) {
               color={"gray.200"}
               textAlign={"center"}
             >
-              What is Pinot Noir?
+              Can you help me plan a trip to Napa Valley?
             </Heading>
           </CardHeader>
         </Card>
@@ -90,7 +90,7 @@ export function EmptyState(props: { onChoice: (question: string) => any }) {
               color={"gray.200"}
               textAlign={"center"}
             >
-              What is the weather like in napa valley in November?
+              What is the weather like in napa valley in January?
             </Heading>
           </CardHeader>
         </Card>
