@@ -26,8 +26,6 @@ from pydantic import BaseModel
 
 from constants import WEAVIATE_DOCS_INDEX_NAME
 
-from hyde.chain import chain as hyde_chain
-
 RESPONSE_TEMPLATE = """\
 You are a helpful travel expert for all things related to Napa Valley and wine country. \
 You know about wineries, places to eat, and experiences to have. You are friendly and encouraging. \
@@ -203,7 +201,6 @@ answer_chain = create_chain(
 
 
 add_routes(app, answer_chain, path="/chat", input_type=ChatRequest)
-add_routes(app, hyde_chain, path="/hyde")
 
 
 @app.post("/feedback")
