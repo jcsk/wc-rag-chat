@@ -5,6 +5,9 @@ description = ""
 authors = ["SN <6432132+samnoyes@users.noreply.github.com>"]
 readme = "README.md"
 
+[tool.poetry.scripts]
+pip = "pip3"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 openai = "^0.28.0"
@@ -18,6 +21,7 @@ weaviate-client = "^3.23.2"
 psycopg2 = "^2.9.7"
 lxml = "^4.9.3"
 langserve = {extras = ["server"], version = "^0.0.8"}
+hyde = {path = "packages/hyde", develop = true}
 
 
 [tool.poetry.group.dev.dependencies]
